@@ -1,8 +1,10 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -11,6 +13,7 @@ import (
 
 var tmpl = template.Must(template.ParseFiles("index.html")) // переменная уровня пакета, которая указывает на определение шаблона из предоставленных файлов
 // template.ParseFiles анализирует файл index.html в корне каталога проекта и проверяет его на валидность
+var apiKey *string // переменная для передачи токена API в виде флага командной строки
 
 // модель данных, получаемых от News API
 // https://newsapi.org/docs/endpoints/everything
@@ -48,7 +51,6 @@ func indexHandler(w http.ResponseWriter, r *http.Request) {
 	tmpl.Execute(w, nil)
 }
 
-// d4ea738579e34298bff715ed84d9ea2b
 // Создаем роут /search, который обрабатывает поисковые запросы для новостных статей
 // извлекает параметры q и page из URL-адреса запроса и выводит в терминал
 func searchHandler(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +73,13 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	// передача токена API в виде флага командной строки
+	// go run main.go -apikey=<newsapi access key>
+	apiKey = flag.String("apikey", "", "Newsapi.org access key") // определение строкового флага
+	flag.Parse()
+	if *apiKey == "" {
+		log.Fatal("API key is required")
+	}
 
 	port := os.Getenv("PORT")
 	if port == "" {
