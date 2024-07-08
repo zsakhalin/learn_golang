@@ -1,9 +1,10 @@
 package main
 
 import (
-	// "fmt"
+	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
 	"os"
 )
 
@@ -16,7 +17,28 @@ var tmpl = template.Must(template.ParseFiles("index.html")) // переменн�
 func indexHandler(w http.ResponseWriter, r *http.Request) {
 	// w.Write([]byte("<h1>HELLO W</h1>")) //принимает слайс байтов и записывает объединенные данные как часть HTTP-ответа
 	tmpl.Execute(w, nil)
-	// fmt.Println(w)
+}
+
+// d4ea738579e34298bff715ed84d9ea2b
+// Создаем роут /search, который обрабатывает поисковые запросы для новостных статей
+// извлекает параметры q и page из URL-адреса запроса и выводит в терминал
+func searchHandler(w http.ResponseWriter, r *http.Request) {
+	u, err := url.Parse(r.URL.String())
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Internal server error"))
+		return
+	}
+
+	params := u.Query()
+	searchKey := params.Get("q") // q - запрос пользователя
+	page := params.Get("page")   // page используется для пролистывания результатов
+	if page == "" {              // Если он не включен в URL, присвоим 1
+		page = "1"
+	}
+
+	fmt.Println("Search Query is: ", searchKey)
+	fmt.Println("Resault page is: ", page)
 }
 
 func main() {
@@ -30,6 +52,7 @@ func main() {
 
 	fs := http.FileServer(http.Dir("assets"))                // экземпляр объекта файлового сервера, c каталогом, в котором находятся все статические файлы
 	mux.Handle("/assets/", http.StripPrefix("/assets/", fs)) // указание маршрутизатору использовать этот fs объект файлового сервера для всех путей, начинающихся с префикса /assets/
-	mux.HandleFunc("/", indexHandler)
-	http.ListenAndServe(":"+port, mux) //запускает сервер на порту 3000, если порт не установлен окружением
+	mux.HandleFunc("/search/", searchHandler)                // регистрируем обработчик для пути /search
+	mux.HandleFunc("/", indexHandler)                        // регистрируем обработчик для пути /
+	http.ListenAndServe(":"+port, mux)                       //запускает сервер на порту 3000, если порт не установлен окружением
 }
