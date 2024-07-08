@@ -6,10 +6,39 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"time"
 )
 
 var tmpl = template.Must(template.ParseFiles("index.html")) // переменная уровня пакета, которая указывает на определение шаблона из предоставленных файлов
 // template.ParseFiles анализирует файл index.html в корне каталога проекта и проверяет его на валидность
+
+// модель данных, получаемых от News API
+// https://newsapi.org/docs/endpoints/everything
+type Source struct {
+	ID   interface{} `json:"id"`
+	Name string      `json:"name"`
+}
+type Article struct {
+	Source      Source    `json:"source"`
+	Author      string    `json:"author"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	URL         string    `json:"url"`
+	URLToImage  string    `json:"urlToImage"`
+	PublishedAt time.Time `json:"publishedAt"`
+	Content     string    `json:"content"`
+}
+type Results struct {
+	Status       string    `json:"status"`
+	TotalResults int       `json:"totalResults"`
+	Articles     []Article `json:"articles"`
+}
+type Search struct {
+	SearchKey  string  // поисковый запрос
+	NextPage   int     //  позволяет пролистывать результаты
+	TotalPages int     // общее количество страниц результатов запроса
+	Results    Results // текущая страница результатов запроса
+}
 
 // функция-обработчик для корневого пути /
 // w — это структура для отправки ответов на HTTP-запрос
