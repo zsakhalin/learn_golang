@@ -1,13 +1,16 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"html/template"
 	"log"
+	"math"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -38,7 +41,7 @@ type Results struct {
 }
 type Search struct {
 	SearchKey  string  // поисковый запрос
-	NextPage   int     //  позволяет пролистывать результаты
+	NextPage   int     // позволяет пролистывать результаты
 	TotalPages int     // общее количество страниц результатов запроса
 	Results    Results // текущая страница результатов запроса
 }
@@ -70,6 +73,45 @@ func searchHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println("Search Query is: ", searchKey)
 	fmt.Println("Resault page is: ", page)
+
+	search := &Search{}          //  новый экземпляр структуры Searc
+	search.SearchKey = searchKey // устанавливаем значение поля SearchKey равным значению параметра URL q в HTTP-запросе
+
+	next, err := strconv.Atoi(page) //конвертируем переменную page в целое число
+	if err != nil {
+		http.Error(w, "Unexpected server error", http.StatusInternalServerError)
+		return
+	}
+
+	search.NextPage = next //присваиваем int(page) полю NextPage переменной search
+	pageSize := 20         // количество результатов, которые API новостей будет возвращать в ответ
+
+	endpoint := fmt.Sprintf("https://newsapi.org/v2/everything?q=%s&pageSize=%d&page=%d&apiKey=%s&sortBy=publishedAt&language=en", url.QueryEscape(search.SearchKey), pageSize, search.NextPage, *apiKey)
+	resp, err := http.Get(endpoint)
+	if err != nil {
+		w.WriteHeader((http.StatusInternalServerError))
+		return
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 { // Если ответ от News API не 200 OK
+		w.WriteHeader((http.StatusInternalServerError))
+		return
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&search.Results)
+	if err != nil {
+		w.WriteHeader((http.StatusInternalServerError))
+		return
+	}
+
+	search.TotalPages = int(math.Ceil(float64(search.Results.TotalResults / pageSize))) // общее количество страниц = TotalResults / pageSize
+	err = tmpl.Execute(w, search)                                                       // рендерим шаблон и передаем переменную search в качестве интерфейса данных, это даёт доступ к данным из объекта JSON в шаблоне                                                  //
+	if err != nil {
+		w.WriteHeader((http.StatusInternalServerError))
+		return
+	}
 }
 
 func main() {
